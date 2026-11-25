@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KKJ Express — Coffee Point of Sale</title>
+  <!-- Google Fonts: Plus Jakarta Sans, Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- =========================================================
+       VIEW 1: LOGIN SCREEN (KIRI: FORM, KANAN: AKUN DEMO)
+  ========================================================== -->
+  <section id="login-view" class="login-screen">
+    <div class="login-bg-overlay"></div>
+
+    <div class="login-container">
+      <!-- Top Bar -->
+      <header class="login-header">
+        <div class="brand-logo light">
+          <div class="brand-title"><strong>KKJ</strong> Express</div>
+          <div class="brand-subtitle">COFFEE  /  POINT OF SALE</div>
+        </div>
+        <div class="login-help">
+          <span>Butuh bantuan?</span>
+          <a href="#" onclick="showToast('Hubungi Admin Pusat: +62 812-3456-7890')">Hubungi admin</a>
+        </div>
+      </header>
+
+      <!-- Main 2-Column Area -->
+      <main class="login-main-grid">
+        <!-- KOLOM KIRI: FORM LOGIN -->
+        <div class="login-form-box">
+          <div class="eyebrow-tag">
+            <span class="line"></span> KKJ EXPRESS / WORKSPACE PORTAL
+          </div>
+          <h1 class="login-heading">Selamat datang kembali</h1>
+          <p class="login-sub">Masuk ke akun KKJ Express Anda untuk melanjutkan operasional hari ini.</p>
+
+          <form id="login-form">
+            <div class="form-group">
+              <label for="username">Email atau username</label>
+              <div class="input-wrapper">
+                <i data-lucide="user"></i>
+                <input type="text" id="username" placeholder="Masukkan email atau username" value="budi.santoso" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Kata sandi</label>
+              <div class="input-wrapper">
+                <i data-lucide="lock"></i>
+                <input type="password" id="password" placeholder="Masukkan kata sandi" value="••••••••" required />
+                <button type="button" id="toggle-pass" class="icon-btn" aria-label="Tampilkan sandi">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-options">
+              <label class="checkbox-label">
+                <input type="checkbox" checked />
+                <span>Ingat saya</span>
+              </label>
+              <a href="#" class="forgot-link" onclick="showToast('Link reset sandi telah dikirim ke email terdaftar.')">Lupa kata sandi?</a>
+            </div>
+
+            <button type="submit" class="btn-login-submit">
+              <span>Masuk</span>
+              <i data-lucide="arrow-right"></i>
+            </button>
+          </form>
+
+          <div class="role-badge">
+            <i data-lucide="shield-check"></i>
+            <span>Akses otomatis sesuai peran akun Anda.</span>
+          </div>
+
+          <div class="rider-info-box">
+            <i data-lucide="info"></i>
+            <div>
+              <strong>Informasi operasional</strong>
+              <p>Login Rider tercatat sebagai waktu mulai kerja. Login Owner membuka panel kontrol pusat.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- KOLOM KANAN: PILIHAN AKUN DEMO RIDER / OWNER -->
+        <aside class="demo-panel">
+          <div class="demo-panel-header">
+            <div class="demo-eyebrow">AKSES CEPAT SIMULASI</div>
+            <h2 class="demo-title">Gunakan Akun Demo</h2>
+            <p class="demo-desc">Pilih peran di bawah untuk menguji tampilan dan fitur masing-masing workspace secara instan.</p>
+          </div>
+
+          <div class="demo-cards-stack">
+            <!-- CARD DEMO RIDER -->
+            <div class="demo-account-card">
+              <div class="demo-card-top">
+                <div class="demo-icon-box rider">
+                  <i data-lucide="coffee"></i>
+                </div>
+                <div class="demo-card-meta">
+                  <div class="demo-role-badge rider">RIDER / KASIR GEROBAK</div>
+                  <h3>Budi Santoso</h3>
+                  <span class="demo-cred mono">user: budi.santoso · Gerobak 03</span>
+                </div>
+              </div>
+              <p class="demo-card-summary">
+                Akses POS kasir harian, input pembayaran Tunai & QRIS, riwayat transaksi shift, serta pemantauan stok bahan gerobak.
+              </p>
+              <div class="demo-card-actions">
+                <button type="button" class="btn-demo-fill" onclick="fillDemoCredentials('rider')">Isi form</button>
+                <button type="button" class="btn-demo-enter rider" onclick="loginAsRole('rider')">
+                  <span>Masuk sebagai Rider</span>
+                  <i data-lucide="arrow-right"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- CARD DEMO OWNER -->
+            <div class="demo-account-card owner-highlight">
+              <div class="demo-card-top">
+                <div class="demo-icon-box owner">
+                  <i data-lucide="shield-check"></i>
+                </div>
+                <div class="demo-card-meta">
+                  <div class="demo-role-badge owner">OWNER / AKSES PENUH</div>
+                  <h3>Akun Owner KKJ Express</h3>
+                  <span class="demo-cred mono">user: owner.kkj · Pusat Manajemen</span>
+                </div>
+              </div>
+              <p class="demo-card-summary">
+                Pantau seluruh gerobak, laporan penjualan, pengeluaran, keuangan, manajemen produk, alokasi stok, proyeksi, & absensi rider.
+              </p>
+              <div class="demo-card-actions">
+                <button type="button" class="btn-demo-fill" onclick="fillDemoCredentials('owner')">Isi form</button>
+                <button type="button" class="btn-demo-enter owner" onclick="loginAsRole('owner')">
+                  <span>Masuk sebagai Owner</span>
+                  <i data-lucide="arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      <!-- Footer -->
+      <footer class="login-footer">
+        <div class="tagline">KOPI TERUS MENGALIR. USAHA TETAP TERKENDALI.</div>
+        <div class="copyright">© 2026 KKJ Express. Seluruh hak dilindungi.</div>
+      </footer>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       VIEW 2A: RIDER WORKSPACE (BERANDA POS, RIWAYAT, STOK)
+  ========================================================== -->
+  <div id="rider-app-view" class="rider-wrapper hidden">
+    <!-- Top Navbar -->
+    <header class="r-top-navbar">
+      <div class="r-navbar-inner">
+        <div class="brand-logo dark">
+          <div class="brand-title"><strong>KKJ</strong> Express</div>
+          <div class="brand-subtitle">COFFEE  /  POINT OF SALE</div>
+        </div>
+
+        <nav class="r-nav-tabs" aria-label="Navigasi Utama Rider">
+          <button class="r-nav-tab active" data-target="tab-beranda">Beranda</button>
+          <button class="r-nav-tab" data-target="tab-riwayat">Riwayat transaksi</button>
+          <button class="r-nav-tab" data-target="tab-stok">Stok gerobak</button>
+        </nav>
+
+        <div class="r-user-profile-dropdown" id="r-user-menu-btn">
+          <div class="r-user-info">
+            <div class="r-user-name">Budi Santoso</div>
+            <div class="r-user-role">Rider • Gerobak 03</div>
+          </div>
+          <i data-lucide="chevron-down" class="r-chevron-icon"></i>
+          
+          <div class="r-dropdown-menu hidden" id="r-user-dropdown">
+            <div class="r-dropdown-header">Shift Aktif • 07.00 WIB</div>
+            <button type="button" onclick="loginAsRole('owner')" class="r-dropdown-item">
+              <i data-lucide="repeat"></i> Beralih ke Akun Owner
+            </button>
+            <button type="button" onclick="logoutApp()" class="r-dropdown-item danger">
+              <i data-lucide="log-out"></i> Keluar Akun
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="r-main-container">
+      <!-- TAB 1: BERANDA (POS KASIR) -->
+      <section id="tab-beranda" class="r-tab-content active">
+        <div class="r-hero-banner">
+          <div class="r-hero-overlay"></div>
+          <div class="r-hero-content">
+            <div class="r-hero-left">
+              <div class="eyebrow-tag">
+                <span class="line"></span> KKJ EXPRESS / RIDER WORKSPACE
+              </div>
+              <h1 class="r-hero-greeting">Selamat pagi, Budi.</h1>
+              <p class="r-hero-sub">Siap menyajikan kopi terbaik hari ini?</p>
+            </div>
+            <div class="r-hero-date-card">
+              <div class="r-date-main">Selasa, 17 November 2026</div>
+              <div class="r-date-sync">Terakhir disinkronkan 10.24 WIB</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="r-status-bar">
+          <div class="r-status-metrics">
+            <div class="r-status-pill">
+              <span class="r-dot-green"></span>
+              <strong>Sedang beroperasi</strong>
+            </div>
+            <div class="r-status-item mono">Mulai kerja  07.00 WIB</div>
+            <div class="r-status-item mono">Durasi  <span>3 jam 24 menit</span></div>
+            <div class="r-status-item mono">Absen tercatat saat login</div>
+          </div>
+          <button type="button" class="r-btn-end-shift" onclick="akhiriOperasional()">
+            Akhiri operasional
+          </button>
+        </div>
+
+        <div class="r-pos-grid">
+          <!-- Left Column: Product Catalog -->
+          <div class="r-catalog-section">
+            <div class="r-catalog-header">
+              <div>
+                <h2 class="r-section-title">Buat pesanan</h2>
+                <p class="r-section-subtitle">Pilih produk untuk ditambahkan ke pesanan.</p>
+              </div>
+              <div class="r-search-box">
+                <i data-lucide="search"></i>
+                <input type="text" id="product-search" placeholder="Cari nama produk..." />
+              </div>
+            </div>
+
+            <div class="r-filter-row">
+              <div class="r-category-pills">
+                <button class="r-pill-btn active" data-category="all">Semua produk</button>
+                <button class="r-pill-btn" data-category="KOPI">Kopi</button>
+                <button class="r-pill-btn" data-category="NON-KOPI">Non-kopi</button>
+              </div>
+              <div class="r-product-count" id="product-count-label">6 produk tersedia</div>
+            </div>
+
+            <div class="r-product-grid" id="product-grid"></div>
+          </div>
+
+          <!-- Right Column: Cart / Pesanan Saat Ini -->
+          <aside class="r-cart-panel">
+            <div class="r-cart-header">
+              <div>
+                <h2 class="r-cart-title">Pesanan saat ini</h2>
+                <div class="r-cart-meta" id="current-order-meta">#KKJ-0319 • 3 cup</div>
+              </div>
+              <button type="button" class="r-btn-reset-cart" id="reset-cart-btn">Reset</button>
+            </div>
+
+            <div class="r-cart-items" id="cart-items-list"></div>
+
+            <div class="r-cart-summary">
+              <div class="r-summary-row subtotal">
+                <span id="subtotal-label">Subtotal (3 cup)</span>
+                <span id="subtotal-value">Rp56.000</span>
+              </div>
+              <div class="r-summary-row total">
+                <span>Total pembayaran</span>
+                <span class="r-total-amount" id="total-value">Rp56.000</span>
+              </div>
+
+              <div>
+                <label class="r-payment-label">Metode pembayaran</label>
+                <div class="r-payment-toggle">
+                  <button type="button" class="r-pay-opt active" data-method="Tunai">Tunai</button>
+                  <button type="button" class="r-pay-opt" data-method="QRIS">QRIS</button>
+                </div>
+              </div>
+
+              <div id="cash-payment-box">
+                <label class="r-payment-label" for="cash-received">Uang diterima</label>
+                <div class="r-cash-input-box">
+                  <span class="r-currency-prefix">Rp</span>
+                  <input type="text" id="cash-received" value="60.000" inputmode="numeric" />
+                </div>
+
+                <div class="r-change-box">
+                  <span>Kembalian</span>
+                  <strong id="change-value">Rp4.000</strong>
+                </div>
+              </div>
+
+              <div id="qris-payment-box" class="hidden">
+                <div class="r-qris-notice">
+                  <i data-lucide="qr-code"></i>
+                  <span>Tunjukkan kode QRIS Gerobak 03 kepada pelanggan untuk pemindaian otomatis.</span>
+                </div>
+              </div>
+
+              <button type="button" class="r-btn-complete-order" id="complete-order-btn">
+                Selesaikan pembayaran
+              </button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- TAB 2: RIWAYAT TRANSAKSI -->
+      <section id="tab-riwayat" class="r-tab-content hidden">
+        <div class="r-page-top-bar">
+          <div>
+            <div class="r-breadcrumb-tag">GEROBAK 03  /  PENJUALAN</div>
+            <h1 class="r-page-title">Riwayat transaksi</h1>
+            <p class="r-page-subtitle">Lihat kembali pesanan dan pembayaran yang telah selesai.</p>
+          </div>
+          <span class="r-badge-sample">Data contoh</span>
+        </div>
+
+        <div class="r-kpi-grid-3">
+          <div class="r-kpi-card dark">
+            <div class="r-kpi-value" id="kpi-total-sales">Rp298.000</div>
+            <div class="r-kpi-label accent">Total penjualan</div>
+          </div>
+          <div class="r-kpi-card light">
+            <div class="r-kpi-value" id="kpi-total-tx">8</div>
+            <div class="r-kpi-label">Transaksi berhasil</div>
+          </div>
+          <div class="r-kpi-card light">
+            <div class="r-kpi-value" id="kpi-total-cups">16 cup</div>
+            <div class="r-kpi-label">Produk terjual</div>
+          </div>
+        </div>
+
+        <div class="r-payment-split-card">
+          <div class="r-split-item">
+            <div>
+              <div class="r-split-title">Tunai</div>
+              <div class="r-split-amount" id="split-tunai-amount">Rp130.000</div>
+            </div>
+            <div class="r-split-count" id="split-tunai-count">4 transaksi</div>
+          </div>
+          <div class="r-split-divider"></div>
+          <div class="r-split-item">
+            <div>
+              <div class="r-split-title">QRIS</div>
+              <div class="r-split-amount" id="split-qris-amount">Rp168.000</div>
+            </div>
+            <div class="r-split-count" id="split-qris-count">4 transaksi</div>
+          </div>
+        </div>
+
+        <div class="r-tx-controls">
+          <div class="r-search-box large">
+            <i data-lucide="search"></i>
+            <input type="text" id="tx-search" placeholder="Cari ID transaksi..." />
+          </div>
+          <div class="r-date-select-box">
+            <span>Hari ini, 17 November 2026</span>
+            <i data-lucide="chevron-down"></i>
+          </div>
+        </div>
+
+        <div class="r-tx-filter-bar">
+          <div class="r-category-pills">
+            <button class="r-pill-btn active" data-tx-filter="all">Semua</button>
+            <button class="r-pill-btn" data-tx-filter="Tunai">Tunai</button>
+            <button class="r-pill-btn" data-tx-filter="QRIS">QRIS</button>
+          </div>
+          <div class="r-updated-note">Diperbarui 10.24 WIB</div>
+        </div>
+
+        <div class="r-card-container">
+          <div class="r-card-header-flex">
+            <div>
+              <h2 class="r-card-title">Transaksi hari ini</h2>
+              <p class="r-card-sub" id="tx-subtitle-count">8 transaksi selesai • urutan terbaru</p>
+            </div>
+            <span class="r-right-badge" id="tx-right-badge">8 transaksi</span>
+          </div>
+
+          <div class="r-table-responsive">
+            <table class="r-data-table">
+              <thead>
+                <tr>
+                  <th>ID / waktu</th>
+                  <th>Metode</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th class="text-right">Detail</th>
+                </tr>
+              </thead>
+              <tbody id="tx-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="r-card-footer-flex">
+            <span id="tx-footer-showing">Menampilkan 8 dari 8 transaksi</span>
+            <span class="r-status-ok-text">Seluruh pembayaran berhasil</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: STOK GEROBAK -->
+      <section id="tab-stok" class="r-tab-content hidden">
+        <div class="r-page-top-bar">
+          <div>
+            <div class="r-breadcrumb-tag">GEROBAK 03  /  PERSEDIAAN</div>
+            <h1 class="r-page-title">Stok gerobak</h1>
+            <p class="r-page-subtitle">Pantau persediaan dan siapkan stok untuk besok.</p>
+          </div>
+          <div class="r-stok-top-actions">
+            <span class="r-badge-sample">Data contoh</span>
+            <div class="r-date-select-box compact">
+              <span>17 November 2026</span>
+              <i data-lucide="chevron-down"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="r-kpi-grid-3">
+          <div class="r-kpi-card light">
+            <div class="r-kpi-value">3</div>
+            <div class="r-kpi-label">Bahan dipantau</div>
+          </div>
+          <div class="r-kpi-card light">
+            <div class="r-kpi-value warning">1</div>
+            <div class="r-kpi-label">Stok menipis</div>
+          </div>
+          <div class="r-kpi-card light">
+            <div class="r-kpi-value">10.24 WIB</div>
+            <div class="r-kpi-label">Sinkronisasi terakhir</div>
+          </div>
+        </div>
+
+        <div class="r-card-container">
+          <div class="r-card-header-block">
+            <h2 class="r-card-title">Kondisi stok saat ini</h2>
+            <p class="r-card-sub">Persediaan tersisa setelah pemakaian penjualan hari ini.</p>
+          </div>
+
+          <div class="r-table-responsive">
+            <table class="r-data-table">
+              <thead>
+                <tr>
+                  <th>Bahan baku</th>
+                  <th>Stok tersisa</th>
+                  <th>Dipakai hari ini</th>
+                  <th>Kondisi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Biji kopi</strong></td>
+                  <td><strong>1,8 kg</strong></td>
+                  <td class="r-text-muted">0,6 kg</td>
+                  <td><span class="r-badge-status safe">Aman</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Susu segar</strong></td>
+                  <td><strong>1,2 liter</strong></td>
+                  <td class="r-text-muted">2,8 liter</td>
+                  <td><span class="r-badge-status low">Menipis</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Gula aren</strong></td>
+                  <td><strong>1,5 liter</strong></td>
+                  <td class="r-text-muted">0,9 liter</td>
+                  <td><span class="r-badge-status safe">Aman</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="r-card-container dark-panel">
+          <div class="r-card-header-flex">
+            <div>
+              <h2 class="r-card-title light">Rekomendasi stok besok</h2>
+              <p class="r-card-sub light">Berdasarkan pemakaian dari penjualan 10–16 November 2026.</p>
+            </div>
+            <span class="r-date-pill-dark">18 November 2026</span>
+          </div>
+
+          <div class="r-table-responsive">
+            <table class="r-data-table dark-table">
+              <thead>
+                <tr>
+                  <th>Bahan baku</th>
+                  <th>Pemakaian 7 hari</th>
+                  <th>Target besok</th>
+                  <th>Tambah stok</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Biji kopi</strong></td>
+                  <td class="r-text-muted-light">14 kg</td>
+                  <td><strong>2 kg</strong></td>
+                  <td class="r-text-gold">+0,2 kg</td>
+                </tr>
+                <tr class="highlight-row">
+                  <td><strong>Susu segar</strong></td>
+                  <td class="r-text-muted-light">35 liter</td>
+                  <td><strong>5 liter</strong></td>
+                  <td class="r-text-gold">+3,8 liter</td>
+                </tr>
+                <tr>
+                  <td><strong>Gula aren</strong></td>
+                  <td class="r-text-muted-light">14 liter</td>
+                  <td><strong>2 liter</strong></td>
+                  <td class="r-text-gold">+0,5 liter</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="r-card-container">
+          <div class="r-card-header-flex">
+            <div>
+              <h2 class="r-card-title">Riwayat pergerakan stok</h2>
+              <p class="r-card-sub">Hari ini • 17 November 2026</p>
+            </div>
+            <select id="stock-movement-filter" class="r-select-pill">
+              <option value="all">Semua pergerakan</option>
+              <option value="Penjualan">Penjualan</option>
+              <option value="Alokasi awal">Alokasi awal</option>
+            </select>
+          </div>
+
+          <div class="r-table-responsive">
+            <table class="r-data-table">
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>Bahan baku</th>
+                  <th>Pergerakan</th>
+                  <th>Saldo</th>
+                </tr>
+              </thead>
+              <tbody id="stock-movement-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="r-app-footer">
+      <div class="r-footer-inner">
+        <div class="r-footer-brand"><strong>KKJ</strong> Express</div>
+        <div class="r-footer-right">
+          <div class="tagline">KOPI TERUS MENGALIR. USAHA TETAP TERKENDALI.</div>
+          <div class="copyright">© 2026 KKJ Express</div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2B: OWNER WORKSPACE (9 HALAMAN BACKOFFICE)
+  ========================================================== -->
+  <div id="owner-app-view" class="o-app-layout hidden">
+    <!-- SIDEBAR -->
+    <aside class="o-sidebar">
+      <div class="o-sidebar-top">
+        <div class="o-brand">
+          <div class="o-brand-title"><span>KKJ</span> Express</div>
+          <div class="o-brand-subtitle">COFFEE / POINT OF SALE</div>
+        </div>
+
+        <nav class="o-nav-group">
+          <div class="o-nav-label">UTAMA</div>
+          <button class="o-nav-item active" data-page="dashboard">
+            <i data-lucide="layout-grid"></i>
+            <span>Dashboard</span>
+          </button>
+          <button class="o-nav-item" data-page="laporan-penjualan">
+            <i data-lucide="trending-up"></i>
+            <span>Laporan penjualan</span>
+          </button>
+          <button class="o-nav-item" data-page="pengeluaran">
+            <i data-lucide="receipt"></i>
+            <span>Pengeluaran</span>
+          </button>
+          <button class="o-nav-item" data-page="transaksi">
+            <i data-lucide="file-text"></i>
+            <span>Transaksi</span>
+          </button>
+        </nav>
+
+        <nav class="o-nav-group">
+          <div class="o-nav-label">KELOLA USAHA</div>
+          <button class="o-nav-item" data-page="keuangan">
+            <i data-lucide="wallet"></i>
+            <span>Keuangan</span>
+          </button>
+          <button class="o-nav-item" data-page="produk">
+            <i data-lucide="package"></i>
+            <span>Produk & harga</span>
+          </button>
+          <button class="o-nav-item" data-page="alokasi-stok">
+            <i data-lucide="box"></i>
+            <span>Alokasi stok</span>
+          </button>
+          <button class="o-nav-item" data-page="proyeksi-stok">
+            <i data-lucide="line-chart"></i>
+            <span>Proyeksi stok</span>
+          </button>
+          <button class="o-nav-item" data-page="absensi">
+            <i data-lucide="users"></i>
+            <span>Absensi rider</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="o-sidebar-bottom">
+        <div class="o-ops-widget">
+          <div class="o-ops-title">Operasional hari ini</div>
+          <div class="o-ops-value">8 dari 10</div>
+          <div class="o-ops-sub">gerobak sedang berjualan</div>
+        </div>
+
+        <div>
+          <button class="o-nav-item" onclick="loginAsRole('rider')">
+            <i data-lucide="repeat"></i>
+            <span>Mode Rider POS</span>
+          </button>
+          <button class="o-nav-item">
+            <i data-lucide="settings"></i>
+            <span>Pengaturan</span>
+          </button>
+          <div class="o-sidebar-divider"></div>
+          <button class="o-nav-item" onclick="logoutApp()">
+            <i data-lucide="log-out"></i>
+            <span>Keluar</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="o-main-wrapper">
+      <header class="o-topbar">
+        <div class="o-breadcrumb">
+          <span class="muted">Workspace</span>
+          <span class="slash">/</span>
+          <span class="current">KKJ Express</span>
+        </div>
+
+        <div class="o-topbar-actions">
+          <div class="o-sync-pill">
+            <span class="o-dot-green"></span>
+            <span>Tersinkron · 14.32</span>
+          </div>
+
+          <button class="o-notif-btn" aria-label="Notifikasi">
+            <i data-lucide="bell"></i>
+            <span class="o-notif-badge hidden" id="oNotifBadge">2</span>
+          </button>
+
+          <div class="o-topbar-divider"></div>
+
+          <div class="o-user-profile" onclick="logoutApp()" title="Klik untuk keluar">
+            <div class="o-shield-icon">
+              <i data-lucide="shield-check"></i>
+            </div>
+            <div>
+              <div class="o-user-name">Akun owner</div>
+              <div class="o-user-role">Akses penuh</div>
+            </div>
+            <i data-lucide="chevron-down" class="o-chevron-sm"></i>
+          </div>
+        </div>
+      </header>
+
+      <main class="o-content-area" id="ownerAppContent"></main>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       UNIVERSAL MODAL & TOAST
+  ========================================================== -->
+  <div class="u-modal-backdrop hidden" id="universalModalBackdrop">
+    <div class="u-modal-card" id="universalModalCard"></div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
