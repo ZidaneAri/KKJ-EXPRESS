@@ -34,6 +34,15 @@ let riderProducts = JSON.parse(localStorage.getItem("kkj_products")) || initialR
 let riderTransactions = JSON.parse(localStorage.getItem("kkj_transactions")) || initialRiderTransactions;
 let orderCounter = Number(localStorage.getItem("kkj_order_counter")) || 319;
 
+// State Operasional Shift Rider (tidak langsung mulai saat login)
+let shiftState = JSON.parse(localStorage.getItem("kkj_rider_shift")) || {
+  status: "idle", // "idle" | "active" | "ended"
+  startTimestamp: null,
+  startTimeText: "–",
+  finalDurationText: "00 jam 00 menit 00 detik"
+};
+let shiftTimerInterval = null;
+
 let cart = [
   { id: 1, name: "Kopi Susu Gula Aren", price: 18000, qty: 2 },
   { id: 2, name: "Caffè Latte", price: 20000, qty: 1 }
@@ -101,6 +110,110 @@ function showToast(message) {
 }
 
 // =========================================================
+// SHIFT TIMER & OPERASIONAL RIDER
+// =========================================================
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${hours} jam ${minutes} menit ${seconds} detik`;
+}
+
+function updateShiftUI() {
+  const dotEl = document.getElementById("r-shift-dot");
+  const statusTextEl = document.getElementById("r-shift-status-text");
+  const startTimeEl = document.getElementById("r-shift-start-time");
+  const timerEl = document.getElementById("r-shift-timer");
+  const noteEl = document.getElementById("r-shift-note");
+  const actionBtn = document.getElementById("r-shift-action-btn");
+  const dropdownHeader = document.querySelector(".r-dropdown-header");
+
+  if (!dotEl || !actionBtn) return;
+
+  if (shiftState.status === "active" && shiftState.startTimestamp) {
+    dotEl.className = "r-dot-status active";
+    statusTextEl.textContent = "Sedang beroperasi";
+    startTimeEl.textContent = shiftState.startTimeText;
+    timerEl.textContent = formatDuration(Date.now() - shiftState.startTimestamp);
+    noteEl.textContent = "Absen aktif • waktu berjalan";
+    if (dropdownHeader) dropdownHeader.textContent = `Shift Aktif • ${shiftState.startTimeText}`;
+
+    actionBtn.className = "r-btn-shift-action end";
+    actionBtn.innerHTML = `<i data-lucide="square"></i><span>Akhiri operasional</span>`;
+  } else if (shiftState.status === "ended") {
+    dotEl.className = "r-dot-status ended";
+    statusTextEl.textContent = "Operasional selesai";
+    startTimeEl.textContent = shiftState.startTimeText;
+    timerEl.textContent = shiftState.finalDurationText;
+    noteEl.textContent = "Shift hari ini telah ditutup";
+    if (dropdownHeader) dropdownHeader.textContent = "Shift Selesai";
+
+    actionBtn.className = "r-btn-shift-action start";
+    actionBtn.innerHTML = `<i data-lucide="play"></i><span>Mulai operasional</span>`;
+  } else {
+    dotEl.className = "r-dot-status idle";
+    statusTextEl.textContent = "Belum beroperasi";
+    startTimeEl.textContent = "–";
+    timerEl.textContent = "00 jam 00 menit 00 detik";
+    noteEl.textContent = "Tekan tombol untuk memulai shift";
+    if (dropdownHeader) dropdownHeader.textContent = "Belum Mulai Shift";
+
+    actionBtn.className = "r-btn-shift-action start";
+    actionBtn.innerHTML = `<i data-lucide="play"></i><span>Mulai operasional</span>`;
+  }
+
+  lucide.createIcons();
+}
+
+function startShiftTicker() {
+  clearInterval(shiftTimerInterval);
+  if (shiftState.status === "active" && shiftState.startTimestamp) {
+    shiftTimerInterval = setInterval(() => {
+      const timerEl = document.getElementById("r-shift-timer");
+      if (timerEl) {
+        timerEl.textContent = formatDuration(Date.now() - shiftState.startTimestamp);
+      }
+    }, 1000);
+  }
+}
+
+function toggleOperasional() {
+  if (shiftState.status !== "active") {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+
+    shiftState = {
+      status: "active",
+      startTimestamp: Date.now(),
+      startTimeText: `${hh}.${mm} WIB`,
+      finalDurationText: "00 jam 00 menit 00 detik"
+    };
+
+    localStorage.setItem("kkj_rider_shift", JSON.stringify(shiftState));
+    updateShiftUI();
+    startShiftTicker();
+    showToast(`Operasional dimulai pukul ${shiftState.startTimeText}. Timer berjalan.`);
+  } else {
+    if (!confirm("Apakah Anda yakin ingin mengakhiri operasional hari ini?")) return;
+
+    const finalDuration = formatDuration(Date.now() - shiftState.startTimestamp);
+    clearInterval(shiftTimerInterval);
+
+    shiftState = {
+      ...shiftState,
+      status: "ended",
+      finalDurationText: finalDuration
+    };
+
+    localStorage.setItem("kkj_rider_shift", JSON.stringify(shiftState));
+    updateShiftUI();
+    showToast(`Operasional diakhiri. Total durasi kerja: ${finalDuration}.`);
+  }
+}
+
+// =========================================================
 // AUTHENTICATION & DEMO ACCOUNT SWITCHER
 // =========================================================
 function fillDemoCredentials(role) {
@@ -122,6 +235,7 @@ function loginAsRole(role) {
   document.getElementById("login-view").classList.add("hidden");
 
   if (role === "owner") {
+    clearInterval(shiftTimerInterval);
     document.getElementById("rider-app-view").classList.add("hidden");
     document.getElementById("owner-app-view").classList.remove("hidden");
     renderOwnerPage();
@@ -134,12 +248,15 @@ function loginAsRole(role) {
     renderRiderCart();
     renderRiderTransactions();
     renderStockMovements("all");
+    updateShiftUI();
+    startShiftTicker();
     showToast("Selamat datang kembali, Budi Santoso (Gerobak 03)!");
   }
   lucide.createIcons();
 }
 
 function logoutApp() {
+  clearInterval(shiftTimerInterval);
   localStorage.removeItem("kkj_active_role");
   document.getElementById("rider-app-view").classList.add("hidden");
   document.getElementById("owner-app-view").classList.add("hidden");
@@ -149,31 +266,22 @@ function logoutApp() {
   showToast("Anda telah keluar dari akun.");
 }
 
-function akhiriOperasional() {
-  if (confirm("Apakah Anda yakin ingin mengakhiri operasional hari ini dan menutup shift?")) {
-    logoutApp();
-  }
-}
-
 // =========================================================
 // INITIALIZATION & EVENT LISTENERS
 // =========================================================
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
 
-  // Cek sesi aktif
   const activeRole = localStorage.getItem("kkj_active_role");
   if (activeRole === "owner" || activeRole === "rider") {
     loginAsRole(activeRole);
   }
 
-  // Toggle password visibility
   document.getElementById("toggle-pass").addEventListener("click", () => {
     const passInput = document.getElementById("password");
     passInput.type = passInput.type === "password" ? "text" : "password";
   });
 
-  // Submit Login Form (deteksi otomatis role berdasarkan username)
   document.getElementById("login-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const uname = document.getElementById("username").value.trim().toLowerCase();
@@ -540,7 +648,7 @@ function renderOwnerDashboard() {
     <div class="o-filter-inline-row">
       <div class="o-filter-pills-left">
         <div class="o-pill-control" style="width:auto;"><span>Hari ini</span><i data-lucide="chevron-down"></i></div>
-        <div class="o-pill-control" style="width:auto;"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>24 November 2026</span></div></div>
+        <div class="o-pill-control" style="width:auto;"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>26 November 2026</span></div></div>
         <div class="o-pill-control" style="width:auto;"><span>Semua gerobak</span><i data-lucide="chevron-down"></i></div>
       </div>
       <button class="o-btn-dark" onclick="openExpenseModal()"><i data-lucide="plus-circle"></i> Catat pengeluaran</button>
@@ -703,29 +811,29 @@ function renderOwnerDashboard() {
 
     <div class="o-page-footer">
       <span>Data contoh untuk rancangan antarmuka</span>
-      <span>Terakhir diperbarui 24 Nov 2026, 14.32 WIB</span>
+      <span>Terakhir diperbarui 26 Nov 2026, 14.32 WIB</span>
     </div>
   `;
 }
 
 function renderOwnerLaporanPenjualan() {
   const days = [
-    { d: '18 Nov', h: 82, label: '3,24 jt', dark: false },
-    { d: '19 Nov', h: 92, label: '3,60 jt', dark: false },
-    { d: '20 Nov', h: 106, label: '4,14 jt', dark: false },
-    { d: '21 Nov', h: 115, label: '4,50 jt', dark: false },
-    { d: '22 Nov', h: 138, label: '5,40 jt', dark: true },
-    { d: '23 Nov', h: 108, label: '4,20 jt', dark: false },
-    { d: '24 Nov', h: 124, label: '4,86 jt', dark: false }
+    { d: '20 Nov', h: 82, label: '3,24 jt', dark: false },
+    { d: '21 Nov', h: 92, label: '3,60 jt', dark: false },
+    { d: '22 Nov', h: 106, label: '4,14 jt', dark: false },
+    { d: '23 Nov', h: 115, label: '4,50 jt', dark: false },
+    { d: '24 Nov', h: 138, label: '5,40 jt', dark: true },
+    { d: '25 Nov', h: 108, label: '4,20 jt', dark: false },
+    { d: '26 Nov', h: 124, label: '4,86 jt', dark: false }
   ];
   const rows = [
-    { date: 'Rab, 18 Nov 2026', tx: 108, tunai: 'Rp1.944.000', qris: 'Rp1.296.000', total: 'Rp3.240.000' },
-    { date: 'Kam, 19 Nov 2026', tx: 120, tunai: 'Rp2.160.000', qris: 'Rp1.440.000', total: 'Rp3.600.000' },
-    { date: 'Jum, 20 Nov 2026', tx: 138, tunai: 'Rp2.484.000', qris: 'Rp1.656.000', total: 'Rp4.140.000' },
-    { date: 'Sab, 21 Nov 2026', tx: 150, tunai: 'Rp2.700.000', qris: 'Rp1.800.000', total: 'Rp4.500.000' },
-    { date: 'Min, 22 Nov 2026', tx: 180, tunai: 'Rp3.240.000', qris: 'Rp2.160.000', total: 'Rp5.400.000' },
-    { date: 'Sen, 23 Nov 2026', tx: 140, tunai: 'Rp2.520.000', qris: 'Rp1.680.000', total: 'Rp4.200.000' },
-    { date: 'Sel, 24 Nov 2026', today: true, tx: 162, tunai: 'Rp2.916.000', qris: 'Rp1.944.000', total: 'Rp4.860.000' }
+    { date: 'Jum, 20 Nov 2026', tx: 108, tunai: 'Rp1.944.000', qris: 'Rp1.296.000', total: 'Rp3.240.000' },
+    { date: 'Sab, 21 Nov 2026', tx: 120, tunai: 'Rp2.160.000', qris: 'Rp1.440.000', total: 'Rp3.600.000' },
+    { date: 'Min, 22 Nov 2026', tx: 138, tunai: 'Rp2.484.000', qris: 'Rp1.656.000', total: 'Rp4.140.000' },
+    { date: 'Sen, 23 Nov 2026', tx: 150, tunai: 'Rp2.700.000', qris: 'Rp1.800.000', total: 'Rp4.500.000' },
+    { date: 'Sel, 24 Nov 2026', tx: 180, tunai: 'Rp3.240.000', qris: 'Rp2.160.000', total: 'Rp5.400.000' },
+    { date: 'Rab, 25 Nov 2026', tx: 140, tunai: 'Rp2.520.000', qris: 'Rp1.680.000', total: 'Rp4.200.000' },
+    { date: 'Kam, 26 Nov 2026', today: true, tx: 162, tunai: 'Rp2.916.000', qris: 'Rp1.944.000', total: 'Rp4.860.000' }
   ];
 
   return `
@@ -735,19 +843,19 @@ function renderOwnerLaporanPenjualan() {
     </div>
     <div class="o-filter-box">
       <div class="o-filter-group"><label class="o-filter-label">Periode</label><div class="o-pill-control"><span>7 hari terakhir</span><i data-lucide="chevron-down"></i></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>18 Nov 2026</span></div></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>24 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>20 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>26 Nov 2026</span></div></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Gerobak</label><div class="o-pill-control"><span>Semua gerobak</span><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-actions"><button class="o-btn-dark">Tampilkan</button><button class="o-btn-reset">Reset</button></div>
     </div>
     <div class="o-kpi-grid-3">
-      <div class="o-kpi-card dark"><div class="o-kpi-top"><span>Total penjualan</span><i data-lucide="wallet"></i></div><div class="o-kpi-value">Rp29.940.000</div><div class="o-kpi-foot"><span class="o-trend-up">↑ 18,8%</span><span style="color:#CFC8BC;">dibanding 11–17 Nov 2026</span></div></div>
-      <div class="o-kpi-card"><div class="o-kpi-top"><span>Jumlah transaksi</span><i data-lucide="receipt"></i></div><div class="o-kpi-value">998</div><div class="o-kpi-foot"><span class="o-trend-up">↑ 18,8%</span><span>dibanding 11–17 Nov 2026</span></div></div>
-      <div class="o-kpi-card"><div class="o-kpi-top"><span>Rata-rata transaksi</span><i data-lucide="trending-up"></i></div><div class="o-kpi-value">Rp30.000</div><div class="o-kpi-foot"><strong style="color:var(--text-gold)">18–24 Nov 2026</strong><span>Periode laporan · 7 hari</span></div></div>
+      <div class="o-kpi-card dark"><div class="o-kpi-top"><span>Total penjualan</span><i data-lucide="wallet"></i></div><div class="o-kpi-value">Rp29.940.000</div><div class="o-kpi-foot"><span class="o-trend-up">↑ 18,8%</span><span style="color:#CFC8BC;">dibanding 7 hari sebelumnya</span></div></div>
+      <div class="o-kpi-card"><div class="o-kpi-top"><span>Jumlah transaksi</span><i data-lucide="receipt"></i></div><div class="o-kpi-value">998</div><div class="o-kpi-foot"><span class="o-trend-up">↑ 18,8%</span><span>dibanding 7 hari sebelumnya</span></div></div>
+      <div class="o-kpi-card"><div class="o-kpi-top"><span>Rata-rata transaksi</span><i data-lucide="trending-up"></i></div><div class="o-kpi-value">Rp30.000</div><div class="o-kpi-foot"><strong style="color:var(--text-gold)">20–26 Nov 2026</strong><span>Periode laporan · 7 hari</span></div></div>
     </div>
     <div class="o-grid-2-main">
       <div class="o-panel-card">
-        <div class="o-panel-header"><div><div class="o-panel-title">Tren penjualan harian</div><div class="o-panel-subtitle">18–24 November 2026 · semua gerobak</div></div><span class="o-panel-meta-gold">Penjualan tertinggi: 22 Nov</span></div>
+        <div class="o-panel-header"><div><div class="o-panel-title">Tren penjualan harian</div><div class="o-panel-subtitle">20–26 November 2026 · semua gerobak</div></div><span class="o-panel-meta-gold">Penjualan tertinggi: 24 Nov</span></div>
         <div class="o-chart-area">
           <div class="o-chart-grid-lines"><div class="o-chart-grid-row"><span class="o-y-label">6 jt</span></div><div class="o-chart-grid-row"><span class="o-y-label">3 jt</span></div><div class="o-chart-grid-row" style="border-top:none;"><span class="o-y-label" style="align-self:flex-end;">0</span></div></div>
           <div class="o-bars-overlay">${days.map(b => `<div class="o-bar-col"><div class="o-bar-val-label" style="${b.dark ? 'font-weight:700;' : ''}">${b.label}</div><div class="o-bar-rect ${b.dark ? 'dark' : ''}" style="height:${b.h}px;"></div></div>`).join('')}</div>
@@ -765,13 +873,13 @@ function renderOwnerLaporanPenjualan() {
       </div>
     </div>
     <div class="o-panel-card">
-      <div class="o-panel-header"><div class="o-panel-title">Rincian penjualan harian</div><span class="o-panel-meta-gold">18–24 Nov 2026 · 7 hari</span></div>
+      <div class="o-panel-header"><div class="o-panel-title">Rincian penjualan harian</div><span class="o-panel-meta-gold">20–26 Nov 2026 · 7 hari</span></div>
       <div class="o-table-wrap"><table class="o-table"><thead><tr><th>TANGGAL</th><th class="text-right">TRANSAKSI</th><th class="text-right">TUNAI</th><th class="text-right">QRIS</th><th class="text-right">TOTAL PENJUALAN</th></tr></thead><tbody>
         ${rows.map(r => `<tr class="${r.today ? 'highlight-row' : ''}"><td>${r.date}${r.today ? '<span style="margin-left:18px; font-size:11.5px; color:var(--text-gold); font-weight:600;">Hari ini</span>' : ''}</td><td class="text-right">${r.tx}</td><td class="text-right" style="color:var(--text-secondary);">${r.tunai}</td><td class="text-right" style="color:var(--text-secondary);">${r.qris}</td><td class="text-right" style="font-weight:700;">${r.total}</td></tr>`).join('')}
         <tr class="total-row"><td>Total periode</td><td class="text-right">998</td><td class="text-right">Rp17.964.000</td><td class="text-right">Rp11.976.000</td><td class="text-right">Rp29.940.000</td></tr>
       </tbody></table></div>
     </div>
-    <div class="o-page-footer"><span>Data contoh untuk rancangan antarmuka · transaksi berhasil saja</span><span>Data 24 Nov 2026 sampai pukul 14.32 WIB</span></div>
+    <div class="o-page-footer"><span>Data contoh untuk rancangan antarmuka · transaksi berhasil saja</span><span>Data 26 Nov 2026 sampai pukul 14.32 WIB</span></div>
   `;
 }
 
@@ -784,18 +892,18 @@ function renderOwnerPengeluaran() {
     </div>
     <div class="o-filter-box">
       <div class="o-filter-group"><label class="o-filter-label">Periode</label><div class="o-pill-control"><span>7 hari terakhir</span><i data-lucide="chevron-down"></i></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>18 Nov 2026</span></div></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>24 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>20 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>26 Nov 2026</span></div></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Kategori</label><div class="o-pill-control"><span>Semua kategori</span><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-actions"><button class="o-btn-dark">Tampilkan</button><button class="o-btn-reset">Reset</button></div>
     </div>
     <div class="o-kpi-grid-3">
-      <div class="o-kpi-card dark"><div class="o-kpi-top"><span>Total pengeluaran</span><i data-lucide="wallet"></i></div><div class="o-kpi-value">${formatRupiah(totalExp)}</div><div class="o-kpi-foot"><span>18–24 Nov 2026</span><span style="color:#CFC8BC;">Periode terpilih</span></div></div>
+      <div class="o-kpi-card dark"><div class="o-kpi-top"><span>Total pengeluaran</span><i data-lucide="wallet"></i></div><div class="o-kpi-value">${formatRupiah(totalExp)}</div><div class="o-kpi-foot"><span>20–26 Nov 2026</span><span style="color:#CFC8BC;">Periode terpilih</span></div></div>
       <div class="o-kpi-card"><div class="o-kpi-top"><span>Jumlah transaksi</span><i data-lucide="receipt"></i></div><div class="o-kpi-value">${ownerState.pengeluaranList.length}</div><div class="o-kpi-foot"><strong style="color:var(--text-green)">Catatan biaya</strong><span>Semua kategori aktif</span></div></div>
       <div class="o-kpi-card"><div class="o-kpi-top"><span>Rata-rata transaksi</span><i data-lucide="trending-up"></i></div><div class="o-kpi-value">${formatRupiah(Math.round(totalExp / ownerState.pengeluaranList.length))}</div><div class="o-kpi-foot"><strong style="color:var(--text-gold)">Total ÷ transaksi</strong><span>${totalExp.toLocaleString('id-ID')} ÷ ${ownerState.pengeluaranList.length}</span></div></div>
     </div>
     <div class="o-panel-card">
-      <div class="o-panel-header"><div><div class="o-panel-title">Rincian pengeluaran</div><div class="o-panel-subtitle">18–24 November 2026 · semua kategori</div></div><button class="o-btn-outline"><i data-lucide="download"></i> Unduh laporan</button></div>
+      <div class="o-panel-header"><div><div class="o-panel-title">Rincian pengeluaran</div><div class="o-panel-subtitle">20–26 November 2026 · semua kategori</div></div><button class="o-btn-outline"><i data-lucide="download"></i> Unduh laporan</button></div>
       <div class="o-table-wrap"><table class="o-table"><thead><tr><th>TANGGAL</th><th>KATEGORI</th><th>NAMA PENGELUARAN</th><th>DICATAT OLEH</th><th class="text-right">NOMINAL</th></tr></thead><tbody>
         ${ownerState.pengeluaranList.map(item => `<tr><td>${item.date}</td><td><span class="o-badge-status o-badge-neutral">${item.cat}</span></td><td style="font-weight:500;">${item.name}</td><td style="color:var(--text-secondary);">${item.by}</td><td class="text-right" style="font-weight:600;">${formatRupiah(item.amount)}</td></tr>`).join('')}
         <tr class="total-row"><td>Total pengeluaran</td><td></td><td></td><td style="font-weight:400; color:var(--text-secondary);">${ownerState.pengeluaranList.length} transaksi</td><td class="text-right">${formatRupiah(totalExp)}</td></tr>
@@ -813,13 +921,13 @@ function renderOwnerTransaksi() {
       <button class="o-btn-outline"><i data-lucide="download"></i> Unduh Laporan</button>
     </div>
     <div class="o-filter-box">
-      <div class="o-filter-group"><label class="o-filter-label">Periode</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>18–24 Nov 2026</span></div><i data-lucide="chevron-down"></i></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Periode</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>20–26 Nov 2026</span></div><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Metode pembayaran</label><div class="o-pill-control"><span>Semua metode</span><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Status transaksi</label><div class="o-pill-control"><span>Semua status</span><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Cakupan transaksi</label><div style="font-weight:600; font-size:13.5px;">Seluruh gerobak</div><div style="font-size:11px; color:var(--text-muted);">Tunai & QRIS · Berhasil & Gagal</div></div>
     </div>
     <div class="o-kpi-grid-4">
-      <div class="o-kpi-card"><div class="o-kpi-top"><span>Total transaksi</span><i data-lucide="receipt"></i></div><div class="o-kpi-value">1.012</div><div class="o-kpi-foot">Seluruh gerobak · 18–24 Nov 2026</div></div>
+      <div class="o-kpi-card"><div class="o-kpi-top"><span>Total transaksi</span><i data-lucide="receipt"></i></div><div class="o-kpi-value">1.012</div><div class="o-kpi-foot">Seluruh gerobak · 20–26 Nov 2026</div></div>
       <div class="o-kpi-card dark"><div class="o-kpi-top"><span>Total nilai penjualan</span><i data-lucide="wallet"></i></div><div class="o-kpi-value">Rp29.940.000</div><div class="o-kpi-foot">Hanya transaksi berhasil</div></div>
       <div class="o-kpi-card"><div class="o-kpi-top"><span>Transaksi berhasil</span><i data-lucide="check-circle-2"></i></div><div class="o-kpi-value">998</div><div class="o-kpi-foot">98,6% dari total transaksi</div></div>
       <div class="o-kpi-card"><div class="o-kpi-top"><span>Transaksi gagal</span><i data-lucide="x-circle"></i></div><div class="o-kpi-value">14</div><div class="o-kpi-foot">1,4% dari total transaksi</div></div>
@@ -843,19 +951,19 @@ function renderOwnerTransaksi() {
       </tbody></table></div>
       <div class="o-pagination-bar"><span>Menampilkan 1–8 dari 1.012 transaksi</span><div class="o-page-buttons"><button class="o-page-btn">‹</button><button class="o-page-btn active">1</button><button class="o-page-btn">2</button><button class="o-page-btn">3</button><span style="padding:0 4px;">...</span><button class="o-page-btn">127</button><button class="o-page-btn">›</button></div></div>
     </div>
-    <div class="o-page-footer"><span>Data contoh untuk rancangan antarmuka · seluruh gerobak</span><span>Periode 18–24 Nov 2026 · Diperbarui 14.32 WIB</span></div>
+    <div class="o-page-footer"><span>Data contoh untuk rancangan antarmuka · seluruh gerobak</span><span>Periode 20–26 Nov 2026 · Diperbarui 14.32 WIB</span></div>
   `;
 }
 
 function renderOwnerKeuangan() {
   const cashflow = [
-    { d: '18 Nov', inc: 82, exp: 14, label: '3,24 jt' },
-    { d: '19 Nov', inc: 92, exp: 11, label: '3,60 jt' },
-    { d: '20 Nov', inc: 106, exp: 7, label: '4,14 jt' },
-    { d: '21 Nov', inc: 115, exp: 9, label: '4,50 jt' },
-    { d: '22 Nov', inc: 138, exp: 12, label: '5,40 jt' },
-    { d: '23 Nov', inc: 108, exp: 16, label: '4,20 jt' },
-    { d: '24 Nov', inc: 124, exp: 22, label: '4,86 jt' }
+    { d: '20 Nov', inc: 82, exp: 14, label: '3,24 jt' },
+    { d: '21 Nov', inc: 92, exp: 11, label: '3,60 jt' },
+    { d: '22 Nov', inc: 106, exp: 7, label: '4,14 jt' },
+    { d: '23 Nov', inc: 115, exp: 9, label: '4,50 jt' },
+    { d: '24 Nov', inc: 138, exp: 12, label: '5,40 jt' },
+    { d: '25 Nov', inc: 108, exp: 16, label: '4,20 jt' },
+    { d: '26 Nov', inc: 124, exp: 22, label: '4,86 jt' }
   ];
   const categories = [
     { name: 'Bahan baku', val: 'Rp1.850.000', pct: '55%', dark: true },
@@ -864,13 +972,13 @@ function renderOwnerKeuangan() {
     { name: 'Perawatan', val: 'Rp200.000', pct: '6%', dark: false }
   ];
   const rows = [
-    { date: 'Rab, 18 Nov 2026', inc: 'Rp3.240.000', exp: 'Rp520.000', net: 'Rp2.720.000' },
-    { date: 'Kam, 19 Nov 2026', inc: 'Rp3.600.000', exp: 'Rp400.000', net: 'Rp3.200.000' },
-    { date: 'Jum, 20 Nov 2026', inc: 'Rp4.140.000', exp: 'Rp240.000', net: 'Rp3.900.000' },
-    { date: 'Sab, 21 Nov 2026', inc: 'Rp4.500.000', exp: 'Rp300.000', net: 'Rp4.200.000' },
-    { date: 'Min, 22 Nov 2026', inc: 'Rp5.400.000', exp: 'Rp450.000', net: 'Rp4.950.000' },
-    { date: 'Sen, 23 Nov 2026', inc: 'Rp4.200.000', exp: 'Rp600.000', net: 'Rp3.600.000' },
-    { date: 'Sel, 24 Nov 2026', inc: 'Rp4.860.000', exp: 'Rp850.000', net: 'Rp4.010.000' }
+    { date: 'Jum, 20 Nov 2026', inc: 'Rp3.240.000', exp: 'Rp520.000', net: 'Rp2.720.000' },
+    { date: 'Sab, 21 Nov 2026', inc: 'Rp3.600.000', exp: 'Rp400.000', net: 'Rp3.200.000' },
+    { date: 'Min, 22 Nov 2026', inc: 'Rp4.140.000', exp: 'Rp240.000', net: 'Rp3.900.000' },
+    { date: 'Sen, 23 Nov 2026', inc: 'Rp4.500.000', exp: 'Rp300.000', net: 'Rp4.200.000' },
+    { date: 'Sel, 24 Nov 2026', inc: 'Rp5.400.000', exp: 'Rp450.000', net: 'Rp4.950.000' },
+    { date: 'Rab, 25 Nov 2026', inc: 'Rp4.200.000', exp: 'Rp600.000', net: 'Rp3.600.000' },
+    { date: 'Kam, 26 Nov 2026', inc: 'Rp4.860.000', exp: 'Rp850.000', net: 'Rp4.010.000' }
   ];
 
   return `
@@ -880,8 +988,8 @@ function renderOwnerKeuangan() {
     </div>
     <div class="o-filter-box">
       <div class="o-filter-group"><label class="o-filter-label">Periode</label><div class="o-pill-control"><span>7 hari terakhir</span><i data-lucide="chevron-down"></i></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>18 Nov 2026</span></div></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>24 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>20 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>26 Nov 2026</span></div></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Cakupan</label><div class="o-pill-control"><span>Seluruh usaha</span><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-actions"><button class="o-btn-dark">Tampilkan</button><button class="o-btn-reset">Reset</button></div>
     </div>
@@ -892,7 +1000,7 @@ function renderOwnerKeuangan() {
     </div>
     <div class="o-grid-2-main">
       <div class="o-panel-card">
-        <div class="o-panel-header"><div><div class="o-panel-title">Arus keuangan harian</div><div class="o-panel-subtitle">Pemasukan dan pengeluaran · 18–24 Nov 2026</div></div><div style="display:flex; gap:18px; font-size:12px;"><span class="o-legend-item"><span style="width:8px;height:8px;border-radius:2px;background:var(--bg-dark);"></span> Pemasukan</span><span class="o-legend-item"><span style="width:8px;height:8px;border-radius:2px;background:var(--bg-sand-dark);"></span> Pengeluaran</span></div></div>
+        <div class="o-panel-header"><div><div class="o-panel-title">Arus keuangan harian</div><div class="o-panel-subtitle">Pemasukan dan pengeluaran · 20–26 Nov 2026</div></div><div style="display:flex; gap:18px; font-size:12px;"><span class="o-legend-item"><span style="width:8px;height:8px;border-radius:2px;background:var(--bg-dark);"></span> Pemasukan</span><span class="o-legend-item"><span style="width:8px;height:8px;border-radius:2px;background:var(--bg-sand-dark);"></span> Pengeluaran</span></div></div>
         <div class="o-chart-area">
           <div class="o-chart-grid-lines"><div class="o-chart-grid-row"><span class="o-y-label">6 jt</span></div><div class="o-chart-grid-row"><span class="o-y-label">3 jt</span></div><div class="o-chart-grid-row" style="border-top:none;"><span class="o-y-label" style="align-self:flex-end;">0</span></div></div>
           <div class="o-bars-overlay">${cashflow.map(c => `<div class="o-bar-col"><div class="o-bar-val-label">${c.label}</div><div class="o-bar-pair"><div class="o-bar-rect dark" style="height:${c.inc}px;"></div><div class="o-bar-rect exp" style="height:${c.exp}px;"></div></div></div>`).join('')}</div>
@@ -905,13 +1013,13 @@ function renderOwnerKeuangan() {
       </div>
     </div>
     <div class="o-panel-card">
-      <div class="o-panel-header"><div class="o-panel-title">Rincian keuangan harian</div><span class="o-panel-meta-gold">18–24 Nov 2026 · 7 hari</span></div>
+      <div class="o-panel-header"><div class="o-panel-title">Rincian keuangan harian</div><span class="o-panel-meta-gold">20–26 Nov 2026 · 7 hari</span></div>
       <div class="o-table-wrap"><table class="o-table"><thead><tr><th>TANGGAL</th><th class="text-right">PEMASUKAN</th><th class="text-right">PENGELUARAN</th><th class="text-right">SALDO BERSIH</th></tr></thead><tbody>
         ${rows.map(r => `<tr><td>${r.date}</td><td class="text-right" style="color:var(--text-secondary);">${r.inc}</td><td class="text-right" style="color:var(--text-secondary);">${r.exp}</td><td class="text-right" style="font-weight:700;">${r.net}</td></tr>`).join('')}
         <tr class="total-row"><td>Total periode</td><td class="text-right">Rp29.940.000</td><td class="text-right">Rp3.360.000</td><td class="text-right">Rp26.580.000</td></tr>
       </tbody></table></div>
     </div>
-    <div class="o-page-footer"><span>Data contoh · saldo bersih = pemasukan − pengeluaran pada periode terpilih</span><span>Data 24 Nov 2026 sampai pukul 14.32 WIB</span></div>
+    <div class="o-page-footer"><span>Data contoh · saldo bersih = pemasukan − pengeluaran pada periode terpilih</span><span>Data 26 Nov 2026 sampai pukul 14.32 WIB</span></div>
   `;
 }
 
@@ -962,7 +1070,7 @@ function renderOwnerProduk() {
         <div style="display:flex; gap:10px;"><button class="o-btn-outline" style="flex:1; justify-content:center;">Batal</button><button class="o-btn-dark" style="flex:1.4;">Edit produk</button></div>
       </div>
     </div>
-    <div class="o-page-footer"><span>Data contoh untuk rancangan antarmuka · harga per porsi</span><span>Terakhir diperbarui 24 Nov 2026, 14.32 WIB</span></div>
+    <div class="o-page-footer"><span>Data contoh untuk rancangan antarmuka · harga per porsi</span><span>Terakhir diperbarui 26 Nov 2026, 14.32 WIB</span></div>
   `;
 }
 
@@ -986,7 +1094,7 @@ function renderOwnerAlokasiStok() {
     </div>
     <div class="o-grid-2-main">
       <div class="o-panel-card">
-        <div class="o-panel-header"><div class="o-panel-title">Permintaan stok rider</div><span class="o-panel-meta-gold">24 Nov 2026</span></div>
+        <div class="o-panel-header"><div class="o-panel-title">Permintaan stok rider</div><span class="o-panel-meta-gold">26 Nov 2026</span></div>
         <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
           <button class="o-btn-dark" style="padding:6px 16px; font-size:12px;">Semua 5</button>
           <button class="o-btn-outline" style="padding:6px 16px; font-size:12px; background:var(--bg-sand);">Menunggu  <strong style="color:var(--text-gold);">2</strong></button>
@@ -994,17 +1102,17 @@ function renderOwnerAlokasiStok() {
           <button class="o-btn-outline" style="padding:6px 16px; font-size:12px; background:var(--bg-sand);">Ditolak  1</button>
         </div>
         <div class="o-table-wrap"><table class="o-table"><thead><tr><th>RIDER / GEROBAK</th><th>BAHAN BAKU</th><th>JUMLAH</th><th>PENGAJUAN</th><th>STATUS</th><th class="text-center">AKSI</th></tr></thead><tbody>
-          <tr class="highlight-row"><td><div style="font-weight:600;">Bima Putra</div><div class="o-sub-cell">G-03 · #REQ-024</div></td><td>Bahan baku utama</td><td><strong>40</strong><div class="o-sub-cell">porsi</div></td><td><div>24 Nov 2026</div><div class="o-sub-cell">14.20 WIB</div></td><td><span class="o-badge-status o-badge-warning">Menunggu</span></td><td class="text-center"><button class="o-btn-dark" style="padding:6px 18px; font-size:12px;">Tinjau</button></td></tr>
-          <tr><td><div style="font-weight:600;">Adi Pratama</div><div class="o-sub-cell">G-01 · #REQ-023</div></td><td>Susu segar</td><td><strong>5</strong><div class="o-sub-cell">L</div></td><td><div>24 Nov 2026</div><div class="o-sub-cell">14.10 WIB</div></td><td><span class="o-badge-status o-badge-warning">Menunggu</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Tinjau</button></td></tr>
-          <tr><td><div style="font-weight:600;">Raka Saputra</div><div class="o-sub-cell">G-02 · #REQ-022</div></td><td>Bahan baku utama</td><td><strong>60</strong><div class="o-sub-cell">porsi</div></td><td><div>24 Nov 2026</div><div class="o-sub-cell">13.30 WIB</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Detail</button></td></tr>
-          <tr><td><div style="font-weight:600;">Dimas Prakoso</div><div class="o-sub-cell">G-04 · #REQ-021</div></td><td>Sirup gula aren</td><td><strong>2</strong><div class="o-sub-cell">L</div></td><td><div>24 Nov 2026</div><div class="o-sub-cell">12.40 WIB</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Detail</button></td></tr>
-          <tr><td><div style="font-weight:600;">Fajar Ramadhan</div><div class="o-sub-cell">G-05 · #REQ-020</div></td><td>Kemasan cup</td><td><strong>100</strong><div class="o-sub-cell">pcs</div></td><td><div>24 Nov 2026</div><div class="o-sub-cell">12.10 WIB</div></td><td><span class="o-badge-status o-badge-danger">Ditolak</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Detail</button></td></tr>
+          <tr class="highlight-row"><td><div style="font-weight:600;">Bima Putra</div><div class="o-sub-cell">G-03 · #REQ-024</div></td><td>Bahan baku utama</td><td><strong>40</strong><div class="o-sub-cell">porsi</div></td><td><div>26 Nov 2026</div><div class="o-sub-cell">14.20 WIB</div></td><td><span class="o-badge-status o-badge-warning">Menunggu</span></td><td class="text-center"><button class="o-btn-dark" style="padding:6px 18px; font-size:12px;">Tinjau</button></td></tr>
+          <tr><td><div style="font-weight:600;">Adi Pratama</div><div class="o-sub-cell">G-01 · #REQ-023</div></td><td>Susu segar</td><td><strong>5</strong><div class="o-sub-cell">L</div></td><td><div>26 Nov 2026</div><div class="o-sub-cell">14.10 WIB</div></td><td><span class="o-badge-status o-badge-warning">Menunggu</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Tinjau</button></td></tr>
+          <tr><td><div style="font-weight:600;">Raka Saputra</div><div class="o-sub-cell">G-02 · #REQ-022</div></td><td>Bahan baku utama</td><td><strong>60</strong><div class="o-sub-cell">porsi</div></td><td><div>26 Nov 2026</div><div class="o-sub-cell">13.30 WIB</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Detail</button></td></tr>
+          <tr><td><div style="font-weight:600;">Dimas Prakoso</div><div class="o-sub-cell">G-04 · #REQ-021</div></td><td>Sirup gula aren</td><td><strong>2</strong><div class="o-sub-cell">L</div></td><td><div>26 Nov 2026</div><div class="o-sub-cell">12.40 WIB</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Detail</button></td></tr>
+          <tr><td><div style="font-weight:600;">Fajar Ramadhan</div><div class="o-sub-cell">G-05 · #REQ-020</div></td><td>Kemasan cup</td><td><strong>100</strong><div class="o-sub-cell">pcs</div></td><td><div>26 Nov 2026</div><div class="o-sub-cell">12.10 WIB</div></td><td><span class="o-badge-status o-badge-danger">Ditolak</span></td><td class="text-center"><button class="o-btn-outline" style="padding:6px 18px; font-size:12px;">Detail</button></td></tr>
         </tbody></table></div>
-        <div class="o-pagination-bar"><span>5 permintaan · 24 November 2026</span><span style="color:var(--text-gold); font-weight:600;">Terbaru lebih dulu</span></div>
+        <div class="o-pagination-bar"><span>5 permintaan · 26 November 2026</span><span style="color:var(--text-gold); font-weight:600;">Terbaru lebih dulu</span></div>
       </div>
       <div class="o-panel-card">
         <div class="o-panel-header" style="margin-bottom:10px;"><div><div class="o-panel-title">Tinjau permintaan</div><div style="font-size:12px; color:var(--text-gold); font-weight:600;">#REQ-024 · Menunggu persetujuan</div></div></div>
-        <div style="margin-bottom:16px;"><div style="font-weight:600; font-size:14.5px;">Bima Putra · G-03</div><div style="font-size:12px; color:var(--text-secondary);">Bahan baku utama · diajukan 24 Nov, 14.20 WIB</div></div>
+        <div style="margin-bottom:16px;"><div style="font-weight:600; font-size:14.5px;">Bima Putra · G-03</div><div style="font-size:12px; color:var(--text-secondary);">Bahan baku utama · diajukan 26 Nov, 14.20 WIB</div></div>
         <div class="o-form-group"><label class="o-form-label">Jumlah diminta Rider</label><div style="background:var(--bg-sand); padding:11px 14px; border-radius:12px; display:flex; justify-content:space-between; font-size:13px;"><strong>40 porsi</strong><span style="color:var(--text-muted);">Sesuai pengajuan</span></div></div>
         <div class="o-form-group"><label class="o-form-label">Pratinjau alokasi otomatis setelah disetujui</label><div class="o-form-grid-2" style="margin-bottom:0;"><div style="background:var(--bg-sand); padding:12px 14px; border-radius:12px;"><div style="font-size:11.5px; color:var(--text-secondary);">Pusat</div><div style="font-weight:700; margin-top:2px;">480 → 440 porsi</div></div><div style="background:var(--bg-sand); padding:12px 14px; border-radius:12px;"><div style="font-size:11.5px; color:var(--text-secondary);">Gerobak G-03</div><div style="font-weight:700; margin-top:2px;">12 → 52 porsi</div></div></div></div>
         <div class="o-form-group"><label class="o-form-label">Alasan penolakan (wajib jika ditolak)</label><input type="text" class="o-form-control" placeholder="Tuliskan alasan penolakan" /></div>
@@ -1032,21 +1140,21 @@ function renderOwnerAlokasiStok() {
       </div>
     </div>
     <div class="o-panel-card">
-      <div class="o-panel-header"><div><div class="o-panel-title">Riwayat alokasi stok</div><div class="o-panel-subtitle">Alokasi otomatis dari permintaan yang disetujui dan riwayat penolakan</div></div><span class="o-panel-meta-gold">24 Nov 2026</span></div>
+      <div class="o-panel-header"><div><div class="o-panel-title">Riwayat alokasi stok</div><div class="o-panel-subtitle">Alokasi otomatis dari permintaan yang disetujui dan riwayat penolakan</div></div><span class="o-panel-meta-gold">26 Nov 2026</span></div>
       <div class="o-table-wrap"><table class="o-table"><thead><tr><th>WAKTU DIPROSES</th><th>RIDER / GEROBAK</th><th>BAHAN / JUMLAH</th><th>STATUS</th><th>STOK PUSAT</th><th>STOK GEROBAK</th><th>KETERANGAN</th></tr></thead><tbody>
-        <tr><td><div>24 Nov 2026</div><div class="o-sub-cell">13.40 WIB</div></td><td><strong>Raka Saputra</strong><div class="o-sub-cell">G-02</div></td><td>Bahan baku utama<div class="o-sub-cell">60 porsi</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td>540 → 480 porsi</td><td>8 → 68 porsi</td><td>Permintaan #REQ-022<div class="o-sub-cell">Disetujui oleh owner</div></td></tr>
-        <tr><td><div>24 Nov 2026</div><div class="o-sub-cell">12.50 WIB</div></td><td><strong>Dimas Prakoso</strong><div class="o-sub-cell">G-04</div></td><td>Sirup gula aren<div class="o-sub-cell">2 L</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td>20 → 18 L</td><td>1 → 3 L</td><td>Permintaan #REQ-021<div class="o-sub-cell">Disetujui oleh owner</div></td></tr>
-        <tr><td><div>24 Nov 2026</div><div class="o-sub-cell">12.20 WIB</div></td><td><strong>Fajar Ramadhan</strong><div class="o-sub-cell">G-05</div></td><td>Kemasan cup<div class="o-sub-cell">100 pcs</div></td><td><span class="o-badge-status o-badge-danger">Ditolak</span></td><td>Tetap 40 pcs</td><td>Tetap 60 pcs</td><td><span style="color:var(--text-red); font-weight:600;">Stok pusat hanya 40 pcs.</span><div class="o-sub-cell">Permintaan #REQ-020</div></td></tr>
+        <tr><td><div>26 Nov 2026</div><div class="o-sub-cell">13.40 WIB</div></td><td><strong>Raka Saputra</strong><div class="o-sub-cell">G-02</div></td><td>Bahan baku utama<div class="o-sub-cell">60 porsi</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td>540 → 480 porsi</td><td>8 → 68 porsi</td><td>Permintaan #REQ-022<div class="o-sub-cell">Disetujui oleh owner</div></td></tr>
+        <tr><td><div>26 Nov 2026</div><div class="o-sub-cell">12.50 WIB</div></td><td><strong>Dimas Prakoso</strong><div class="o-sub-cell">G-04</div></td><td>Sirup gula aren<div class="o-sub-cell">2 L</div></td><td><span class="o-badge-status o-badge-success">Disetujui</span></td><td>20 → 18 L</td><td>1 → 3 L</td><td>Permintaan #REQ-021<div class="o-sub-cell">Disetujui oleh owner</div></td></tr>
+        <tr><td><div>26 Nov 2026</div><div class="o-sub-cell">12.20 WIB</div></td><td><strong>Fajar Ramadhan</strong><div class="o-sub-cell">G-05</div></td><td>Kemasan cup<div class="o-sub-cell">100 pcs</div></td><td><span class="o-badge-status o-badge-danger">Ditolak</span></td><td>Tetap 40 pcs</td><td>Tetap 60 pcs</td><td><span style="color:var(--text-red); font-weight:600;">Stok pusat hanya 40 pcs.</span><div class="o-sub-cell">Permintaan #REQ-020</div></td></tr>
       </tbody></table></div>
     </div>
-    <div class="o-page-footer"><span>Data contoh · Rider mengajukan → Owner meninjau → Sistem mengalokasikan setelah disetujui.</span><span>Terakhir diperbarui 24 Nov 2026, 14.32 WIB</span></div>
+    <div class="o-page-footer"><span>Data contoh · Rider mengajukan → Owner meninjau → Sistem mengalokasikan setelah disetujui.</span><span>Terakhir diperbarui 26 Nov 2026, 14.32 WIB</span></div>
   `;
 }
 
 function renderOwnerProyeksiStok() {
-  const histDates = ['18 Nov', '19 Nov', '20 Nov', '21 Nov', '22 Nov', '23 Nov', '24 Nov'];
+  const histDates = ['20 Nov', '21 Nov', '22 Nov', '23 Nov', '24 Nov', '25 Nov', '26 Nov'];
   const histHeights = [66, 72, 78, 88, 108, 84, 96];
-  const projDates = ['25 Nov', '26 Nov', '27 Nov', '28 Nov', '29 Nov', '30 Nov', '1 Des'];
+  const projDates = ['27 Nov', '28 Nov', '29 Nov', '30 Nov', '1 Des', '2 Des', '3 Des'];
   const stockTable = [
     { name: 'Biji kopi sangrai', cur: '8,6 kg', est: '18 kg', target: '19,8 kg', rec: '+11,2 kg', recColor: 'var(--text-gold)', status: 'Perlu tambah', badge: 'o-badge-warning' },
     { name: 'Susu segar', cur: '60 L', est: '70 L', target: '77 L', rec: '+17 L', recColor: 'var(--text-gold)', status: 'Perlu tambah', badge: 'o-badge-warning' },
@@ -1064,14 +1172,14 @@ function renderOwnerProyeksiStok() {
     </div>
     <div class="o-filter-box">
       <div class="o-filter-group"><label class="o-filter-label">Periode forecasting</label><div class="o-pill-control"><span>7 hari ke depan</span><i data-lucide="chevron-down"></i></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai proyeksi</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>25 Nov 2026</span></div></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal akhir proyeksi</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>01 Des 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai proyeksi</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>27 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal akhir proyeksi</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>03 Des 2026</span></div></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Cakupan stok</label><div class="o-pill-control"><span>Stok pusat</span><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-actions"><button class="o-btn-dark">Tampilkan</button><button class="o-btn-reset">Reset</button></div>
     </div>
     <div class="o-kpi-grid-3">
       <div class="o-kpi-card dark"><div class="o-kpi-top"><span>Bahan perlu ditambah</span></div><div class="o-kpi-value">5 bahan</div><div class="o-kpi-foot">Dari 7 jenis bahan & perlengkapan</div></div>
-      <div class="o-kpi-card"><div class="o-kpi-top"><span>Estimasi biji kopi</span></div><div class="o-kpi-value">18 kg</div><div class="o-kpi-foot">Kebutuhan 25 Nov–1 Des 2026</div></div>
+      <div class="o-kpi-card"><div class="o-kpi-top"><span>Estimasi biji kopi</span></div><div class="o-kpi-value">18 kg</div><div class="o-kpi-foot">Kebutuhan 27 Nov–3 Des 2026</div></div>
       <div class="o-kpi-card"><div class="o-kpi-top"><span>Stok pengaman</span></div><div class="o-kpi-value">10%</div><div class="o-kpi-foot">Cadangan di luar estimasi kebutuhan</div></div>
     </div>
     <div class="o-grid-2-main">
@@ -1096,34 +1204,34 @@ function renderOwnerProyeksiStok() {
       <div class="o-panel-card">
         <div class="o-panel-header" style="border-bottom:1px solid #EFEAE0; padding-bottom:14px;"><div><div class="o-panel-title">Dasar proyeksi</div><div class="o-panel-subtitle">Historis penjualan & penggunaan stok</div></div></div>
         <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px;"><span style="color:var(--text-secondary);">Metode</span><strong>Rata-rata 7 hari</strong></div>
-        <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px;"><span style="color:var(--text-secondary);">Data acuan</span><strong>18–24 Nov 2026</strong></div>
+        <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px;"><span style="color:var(--text-secondary);">Data acuan</span><strong>20–26 Nov 2026</strong></div>
         <div style="display:flex; justify-content:space-between; padding:8px 0 14px 0; border-bottom:1px solid #EFEAE0; font-size:13px;"><span style="color:var(--text-secondary);">Stok pengaman</span><strong>10% dari estimasi</strong></div>
-        <div style="font-size:12px; color:var(--text-gold); margin-top:14px; line-height:1.5;">Kg/L: pembulatan 0,1; pcs: satuan utuh.<br>Data 24 Nov masih berjalan.</div>
+        <div style="font-size:12px; color:var(--text-gold); margin-top:14px; line-height:1.5;">Kg/L: pembulatan 0,1; pcs: satuan utuh.<br>Data hari ini masih berjalan.</div>
       </div>
     </div>
     <div class="o-panel-card">
-      <div class="o-panel-header"><div class="o-panel-title">Estimasi & rekomendasi kebutuhan</div><span class="o-panel-meta-gold">25 Nov–1 Des 2026</span></div>
+      <div class="o-panel-header"><div class="o-panel-title">Estimasi & rekomendasi kebutuhan</div><span class="o-panel-meta-gold">27 Nov–3 Des 2026</span></div>
       <div class="o-table-wrap"><table class="o-table"><thead><tr><th>BAHAN BAKU</th><th>STOK TERSEDIA</th><th>ESTIMASI 7 HARI</th><th>TARGET +10%</th><th>REKOMENDASI TAMBAHAN</th><th class="text-center">STATUS</th></tr></thead><tbody>
         ${stockTable.map(s => `<tr><td style="font-weight:600;">${s.name}</td><td>${s.cur}</td><td>${s.est}</td><td>${s.target}</td><td style="font-weight:700; color:${s.recColor};">${s.rec}</td><td class="text-center"><span class="o-badge-status ${s.badge}" style="min-width:120px;">${s.status}</span></td></tr>`).join('')}
       </tbody></table></div>
       <div style="font-size:11.5px; color:var(--text-muted); margin-top:12px;">Target = estimasi + 10%, dibulatkan ke atas (kg/L: 0,1; pcs: utuh). Tambahan = maks(0, target − stok).</div>
     </div>
-    <div class="o-page-footer"><span>Data contoh · proyeksi dapat berubah mengikuti data operasional.</span><span>Stok pusat · 24 Nov 2026, 14.32 WIB</span></div>
+    <div class="o-page-footer"><span>Data contoh · proyeksi dapat berubah mengikuti data operasional.</span><span>Stok pusat · 26 Nov 2026, 14.32 WIB</span></div>
   `;
 }
 
 function renderOwnerAbsensi() {
   const attendance = [
-    { name: 'Adi Pratama', meta: 'G-01 · 7 kehadiran', date: 'Sel, 24 Nov 2026', start: '08.00', end: '–', dur: '6 j 32 m*', status: 'Berlangsung' },
-    { name: 'Raka Saputra', meta: 'G-02 · 6 kehadiran', date: 'Sel, 24 Nov 2026', start: '08.05', end: '–', dur: '6 j 27 m*', status: 'Berlangsung' },
-    { name: 'Bima Putra', meta: 'G-03 · 7 kehadiran', date: 'Sel, 24 Nov 2026', start: '08.00', end: '–', dur: '6 j 32 m*', status: 'Berlangsung' },
-    { name: 'Dimas Prakoso', meta: 'G-04 · 6 kehadiran', date: 'Sel, 24 Nov 2026', start: '08.10', end: '–', dur: '6 j 22 m*', status: 'Berlangsung' },
-    { name: 'Fajar Ramadhan', meta: 'G-05 · 5 kehadiran', date: 'Sel, 24 Nov 2026', start: '08.03', end: '–', dur: '6 j 29 m*', status: 'Berlangsung' },
-    { name: 'Rizky Maulana', meta: 'G-06 · 7 kehadiran', date: 'Sel, 24 Nov 2026', start: '07.58', end: '–', dur: '6 j 34 m*', status: 'Berlangsung' },
-    { name: 'Arif Setiawan', meta: 'G-07 · 6 kehadiran', date: 'Sel, 24 Nov 2026', start: '08.12', end: '–', dur: '6 j 20 m*', status: 'Berlangsung' },
-    { name: 'Doni Firmansyah', meta: 'G-08 · 6 kehadiran', date: 'Sel, 24 Nov 2026', start: '08.07', end: '–', dur: '6 j 25 m*', status: 'Berlangsung' },
-    { name: 'Adi Pratama', meta: 'G-01 · 7 kehadiran', date: 'Sen, 23 Nov 2026', start: '08.00', end: '16.05', dur: '8 j 05 m', status: 'Selesai' },
-    { name: 'Raka Saputra', meta: 'G-02 · 6 kehadiran', date: 'Sen, 23 Nov 2026', start: '08.05', end: '16.05', dur: '8 j 00 m', status: 'Selesai' }
+    { name: 'Adi Pratama', meta: 'G-01 · 7 kehadiran', date: 'Kam, 26 Nov 2026', start: '08.00', end: '–', dur: '6 j 32 m*', status: 'Berlangsung' },
+    { name: 'Raka Saputra', meta: 'G-02 · 6 kehadiran', date: 'Kam, 26 Nov 2026', start: '08.05', end: '–', dur: '6 j 27 m*', status: 'Berlangsung' },
+    { name: 'Bima Putra', meta: 'G-03 · 7 kehadiran', date: 'Kam, 26 Nov 2026', start: '08.00', end: '–', dur: '6 j 32 m*', status: 'Berlangsung' },
+    { name: 'Dimas Prakoso', meta: 'G-04 · 6 kehadiran', date: 'Kam, 26 Nov 2026', start: '08.10', end: '–', dur: '6 j 22 m*', status: 'Berlangsung' },
+    { name: 'Fajar Ramadhan', meta: 'G-05 · 5 kehadiran', date: 'Kam, 26 Nov 2026', start: '08.03', end: '–', dur: '6 j 29 m*', status: 'Berlangsung' },
+    { name: 'Rizky Maulana', meta: 'G-06 · 7 kehadiran', date: 'Kam, 26 Nov 2026', start: '07.58', end: '–', dur: '6 j 34 m*', status: 'Berlangsung' },
+    { name: 'Arif Setiawan', meta: 'G-07 · 6 kehadiran', date: 'Kam, 26 Nov 2026', start: '08.12', end: '–', dur: '6 j 20 m*', status: 'Berlangsung' },
+    { name: 'Doni Firmansyah', meta: 'G-08 · 6 kehadiran', date: 'Kam, 26 Nov 2026', start: '08.07', end: '–', dur: '6 j 25 m*', status: 'Berlangsung' },
+    { name: 'Adi Pratama', meta: 'G-01 · 7 kehadiran', date: 'Rab, 25 Nov 2026', start: '08.00', end: '16.05', dur: '8 j 05 m', status: 'Selesai' },
+    { name: 'Raka Saputra', meta: 'G-02 · 6 kehadiran', date: 'Rab, 25 Nov 2026', start: '08.05', end: '16.05', dur: '8 j 00 m', status: 'Selesai' }
   ];
 
   return `
@@ -1133,8 +1241,8 @@ function renderOwnerAbsensi() {
     </div>
     <div class="o-filter-box">
       <div class="o-filter-group"><label class="o-filter-label">Periode</label><div class="o-pill-control"><span>7 hari terakhir</span><i data-lucide="chevron-down"></i></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>18 Nov 2026</span></div></div></div>
-      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>24 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal mulai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>20 Nov 2026</span></div></div></div>
+      <div class="o-filter-group"><label class="o-filter-label">Tanggal selesai</label><div class="o-pill-control"><div class="o-pill-control-inner"><i data-lucide="calendar"></i><span>26 Nov 2026</span></div></div></div>
       <div class="o-filter-group"><label class="o-filter-label">Rider</label><div class="o-pill-control"><span>Semua rider</span><i data-lucide="chevron-down"></i></div></div>
       <div class="o-filter-actions"><button class="o-btn-dark">Tampilkan</button><button class="o-btn-reset">Reset</button></div>
     </div>
@@ -1144,14 +1252,14 @@ function renderOwnerAbsensi() {
       <div class="o-kpi-card"><div class="o-kpi-top"><span>Rata-rata durasi</span></div><div class="o-kpi-value">8 j 02 m</div><div class="o-kpi-foot">Rata-rata per sesi operasional selesai</div></div>
     </div>
     <div class="o-panel-card">
-      <div class="o-panel-header"><div><div class="o-panel-title">Riwayat absensi</div><div class="o-panel-subtitle">Semua rider · 18–24 November 2026</div></div><span class="o-panel-meta-gold">50 catatan kehadiran</span></div>
+      <div class="o-panel-header"><div><div class="o-panel-title">Riwayat absensi</div><div class="o-panel-subtitle">Semua rider · 20–26 November 2026</div></div><span class="o-panel-meta-gold">50 catatan kehadiran</span></div>
       <div class="o-table-wrap"><table class="o-table"><thead><tr><th>NAMA RIDER</th><th>TANGGAL</th><th>MULAI OPERASIONAL</th><th>SELESAI OPERASIONAL</th><th>DURASI KERJA</th><th class="text-center">STATUS</th></tr></thead><tbody>
         ${attendance.map(a => `<tr class="${a.status==='Berlangsung'?'highlight-row':''}"><td><div style="font-weight:600;">${a.name}</div><div class="o-sub-cell">${a.meta}</div></td><td>${a.date}</td><td>${a.start}</td><td>${a.end}</td><td style="font-weight:600; color:${a.status==='Berlangsung'?'var(--text-gold)':'var(--text-primary)'};">${a.dur}</td><td class="text-center">${a.status==='Berlangsung'?`<span style="color:var(--text-gold); font-weight:600; font-size:12px;">Berlangsung</span>`:`<span class="o-badge-status o-badge-success" style="min-width:120px;">Selesai</span>`}</td></tr>`).join('')}
       </tbody></table></div>
       <div class="o-pagination-bar"><span>Menampilkan 1–10 dari 50 catatan · 8 rider</span><div class="o-page-buttons"><button class="o-page-btn active">1</button><button class="o-page-btn">2</button><button class="o-page-btn">3</button><button class="o-page-btn">4</button><button class="o-page-btn">5</button><button class="o-page-btn" style="padding:0 14px;">Berikutnya</button></div></div>
       <div style="font-size:11px; color:var(--text-muted); margin-top:10px;">* Durasi berjalan dihitung sampai 14.32 WIB. Total dan rata-rata hanya mencakup sesi yang selesai.</div>
     </div>
-    <div class="o-page-footer"><span>Data contoh · seluruh waktu menggunakan WIB.</span><span>Diperbarui 24 Nov 2026, 14.32 WIB</span></div>
+    <div class="o-page-footer"><span>Data contoh · seluruh waktu menggunakan WIB.</span><span>Diperbarui 26 Nov 2026, 14.32 WIB</span></div>
   `;
 }
 
@@ -1169,7 +1277,6 @@ uModalBackdrop.addEventListener('click', (e) => {
   if (e.target === uModalBackdrop) closeUniversalModal();
 });
 
-// Modal Struk Digital Rider
 function openRiderTxModal(txId) {
   const tx = riderTransactions.find(t => t.id === txId);
   if (!tx) return;
@@ -1195,7 +1302,6 @@ function openRiderTxModal(txId) {
   lucide.createIcons();
 }
 
-// Modal Tambah Produk Owner
 function openAddProductModal() {
   uModalCard.style.maxWidth = '640px';
   uModalCard.innerHTML = `
@@ -1247,7 +1353,6 @@ function saveNewProduct() {
   showToast(`Produk "${name}" berhasil ditambahkan.`);
 }
 
-// Modal Tambah Pengeluaran Owner
 function openExpenseModal() {
   uModalCard.style.maxWidth = '640px';
   uModalCard.innerHTML = `
@@ -1259,7 +1364,7 @@ function openExpenseModal() {
       </div>
     </div>
     <div class="o-form-grid-2">
-      <div><label class="o-form-label">Tanggal Pengeluaran *</label><input type="text" id="expDateInput" class="o-form-control" value="24 Nov 2026" /></div>
+      <div><label class="o-form-label">Tanggal Pengeluaran *</label><input type="text" id="expDateInput" class="o-form-control" value="26 Nov 2026" /></div>
       <div><label class="o-form-label">Kategori Pengeluaran *</label><select id="expCatInput" class="o-form-control"><option value="">Pilih kategori</option><option value="Bahan baku">Bahan baku</option><option value="Operasional">Operasional</option><option value="Transportasi">Transportasi</option><option value="Perawatan">Perawatan</option></select></div>
     </div>
     <div class="o-form-group"><label class="o-form-label">Nama Pengeluaran *</label><input type="text" id="expNameInput" class="o-form-control" placeholder="Contoh: Pembelian susu segar" /></div>
@@ -1282,7 +1387,7 @@ function fillSampleExpense() {
 }
 
 function saveNewExpense() {
-  const date = document.getElementById('expDateInput').value || '24 Nov 2026';
+  const date = document.getElementById('expDateInput').value || '26 Nov 2026';
   const cat = document.getElementById('expCatInput').value || 'Operasional';
   const name = document.getElementById('expNameInput').value.trim();
   const amount = parseInt(document.getElementById('expAmountInput').value) || 0;
@@ -1295,7 +1400,6 @@ function saveNewExpense() {
   showToast(`Pengeluaran "${name}" berhasil dicatat.`);
 }
 
-// Modal Detail Transaksi Owner
 function openOwnerTxDetailModal(txId) {
   const tx = ownerState.transaksiList.find(t => t.id === txId) || ownerState.transaksiList[0];
   const isSuccess = tx.status === 'Berhasil';
