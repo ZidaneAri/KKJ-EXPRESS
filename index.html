@@ -86,7 +86,7 @@
             <i data-lucide="info"></i>
             <div>
               <strong>Informasi operasional</strong>
-              <p>Login Rider tercatat sebagai waktu mulai kerja. Login Owner membuka panel kontrol pusat.</p>
+              <p>Setelah masuk, tekan tombol <strong>Mulai operasional</strong> pada workspace Rider untuk mulai mencatat jam kerja dan durasi shift.</p>
             </div>
           </div>
         </div>
@@ -183,9 +183,9 @@
             <div class="r-user-role">Rider • Gerobak 03</div>
           </div>
           <i data-lucide="chevron-down" class="r-chevron-icon"></i>
-          
+
           <div class="r-dropdown-menu hidden" id="r-user-dropdown">
-            <div class="r-dropdown-header">Shift Aktif • 07.00 WIB</div>
+            <div class="r-dropdown-header">Belum Mulai Shift</div>
             <button type="button" onclick="loginAsRole('owner')" class="r-dropdown-item">
               <i data-lucide="repeat"></i> Beralih ke Akun Owner
             </button>
@@ -212,24 +212,25 @@
               <p class="r-hero-sub">Siap menyajikan kopi terbaik hari ini?</p>
             </div>
             <div class="r-hero-date-card">
-              <div class="r-date-main">Selasa, 17 November 2026</div>
+              <div class="r-date-main">Kamis, 26 November 2026</div>
               <div class="r-date-sync">Terakhir disinkronkan 10.24 WIB</div>
             </div>
           </div>
         </div>
 
-        <div class="r-status-bar">
+        <div class="r-status-bar" id="r-status-bar">
           <div class="r-status-metrics">
             <div class="r-status-pill">
-              <span class="r-dot-green"></span>
-              <strong>Sedang beroperasi</strong>
+              <span class="r-dot-status idle" id="r-shift-dot"></span>
+              <strong id="r-shift-status-text">Belum beroperasi</strong>
             </div>
-            <div class="r-status-item mono">Mulai kerja  07.00 WIB</div>
-            <div class="r-status-item mono">Durasi  <span>3 jam 24 menit</span></div>
-            <div class="r-status-item mono">Absen tercatat saat login</div>
+            <div class="r-status-item mono">Mulai kerja  <span id="r-shift-start-time">–</span></div>
+            <div class="r-status-item mono">Durasi  <span id="r-shift-timer">00 jam 00 menit 00 detik</span></div>
+            <div class="r-status-item mono" id="r-shift-note">Tekan tombol untuk memulai shift</div>
           </div>
-          <button type="button" class="r-btn-end-shift" onclick="akhiriOperasional()">
-            Akhiri operasional
+          <button type="button" class="r-btn-shift-action start" id="r-shift-action-btn" onclick="toggleOperasional()">
+            <i data-lucide="play"></i>
+            <span>Mulai operasional</span>
           </button>
         </div>
 
@@ -367,7 +368,7 @@
             <input type="text" id="tx-search" placeholder="Cari ID transaksi..." />
           </div>
           <div class="r-date-select-box">
-            <span>Hari ini, 17 November 2026</span>
+            <span>Hari ini, 26 November 2026</span>
             <i data-lucide="chevron-down"></i>
           </div>
         </div>
@@ -423,7 +424,7 @@
           <div class="r-stok-top-actions">
             <span class="r-badge-sample">Data contoh</span>
             <div class="r-date-select-box compact">
-              <span>17 November 2026</span>
+              <span>26 November 2026</span>
               <i data-lucide="chevron-down"></i>
             </div>
           </div>
@@ -488,9 +489,9 @@
           <div class="r-card-header-flex">
             <div>
               <h2 class="r-card-title light">Rekomendasi stok besok</h2>
-              <p class="r-card-sub light">Berdasarkan pemakaian dari penjualan 10–16 November 2026.</p>
+              <p class="r-card-sub light">Berdasarkan pemakaian dari penjualan 7 hari terakhir.</p>
             </div>
-            <span class="r-date-pill-dark">18 November 2026</span>
+            <span class="r-date-pill-dark">27 November 2026</span>
           </div>
 
           <div class="r-table-responsive">
@@ -531,7 +532,7 @@
           <div class="r-card-header-flex">
             <div>
               <h2 class="r-card-title">Riwayat pergerakan stok</h2>
-              <p class="r-card-sub">Hari ini • 17 November 2026</p>
+              <p class="r-card-sub">Hari ini • 26 November 2026</p>
             </div>
             <select id="stock-movement-filter" class="r-select-pill">
               <option value="all">Semua pergerakan</option>
