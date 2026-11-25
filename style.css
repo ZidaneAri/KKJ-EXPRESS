@@ -756,7 +756,7 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 28px;
+  gap: 24px;
   font-size: 0.85rem;
 }
 
@@ -766,11 +766,25 @@ button, input, select, textarea {
   gap: 9px;
 }
 
-.r-dot-green {
-  width: 8px;
-  height: 8px;
-  background-color: #34A853;
+.r-dot-status {
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
+  display: inline-block;
+  transition: background-color 0.2s ease;
+}
+
+.r-dot-status.idle {
+  background-color: #9E988E;
+}
+
+.r-dot-status.active {
+  background-color: #2E8B57;
+  box-shadow: 0 0 0 4px rgba(46, 139, 87, 0.18);
+}
+
+.r-dot-status.ended {
+  background-color: #C28E4E;
 }
 
 .r-status-item {
@@ -778,18 +792,43 @@ button, input, select, textarea {
   font-size: 0.8rem;
 }
 
-.r-btn-end-shift {
-  background-color: var(--espresso-dark);
-  color: #FFFFFF;
+.r-btn-shift-action {
   border: none;
-  padding: 10px 22px;
+  padding: 11px 22px;
   border-radius: var(--radius-pill);
-  font-size: 0.84rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
-.r-btn-end-shift:hover {
+.r-btn-shift-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+.r-btn-shift-action:hover {
+  transform: translateY(-1px);
+}
+
+.r-btn-shift-action.start {
+  background-color: #2E7D4B;
+  color: #FFFFFF;
+}
+
+.r-btn-shift-action.start:hover {
+  background-color: #24663C;
+}
+
+.r-btn-shift-action.end {
+  background-color: var(--espresso-dark);
+  color: #FFFFFF;
+}
+
+.r-btn-shift-action.end:hover {
   background-color: #A93232;
 }
 
